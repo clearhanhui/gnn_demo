@@ -3,10 +3,8 @@
 import tensorflow as tf
 import numpy as np
 from gnn_demo.utils.graph_utils import add_self_loop_edge
-
 from gnn_demo.data.graph import Graph
-
-from gnn_demo.nn.kernel.segment import segment_softmax
+from gnn_demo.layers.kernel.segment import segment_softmax
 
 """
 Sparse Adj for Computation

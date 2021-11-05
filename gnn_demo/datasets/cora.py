@@ -3,7 +3,7 @@ import os
 import numpy as np
 import scipy.sparse as sp
 import tensorflow as tf
-from gnn_demo.data import Graph
+from gnn_demo.data.graph import Graph
 
 def normalize(mx):
     rowsum = np.array(mx.sum(1))

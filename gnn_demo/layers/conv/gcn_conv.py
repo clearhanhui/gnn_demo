@@ -1,7 +1,7 @@
 import math
 import tensorflow as tf
 import tensorlayer as tl
-from gnn_demo.nn.conv import MessagePassing
+from gnn_demo.layers.conv import MessagePassing
 from gnn_demo.sparse.sparse_adj import SparseAdj
 from gnn_demo.sparse.sparse_ops import sparse_diag_matmul, diag_sparse_matmul
 

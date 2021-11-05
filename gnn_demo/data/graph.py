@@ -6,18 +6,19 @@ import warnings
 
 
 class Graph(object):
-    def __init__(self, edge_index, num_nodes=None, node_feat=None, node_label=None):
+    def __init__(self, edge_index, edge_weight=None, num_nodes=None, node_feat=None, node_label=None):
         """
         Parameters
         ----------
         edge_index: edge list contains source nodes and destination nodes of graph.
+        edge_weight: weight of edges.
         num_nodes: number of nodes.
         node_feat: features and labels of nodes.
         node_label: labels of nodes.
         """
 
-        self._edge_index = edge_index
-        self._standarize_edge_index()
+        self._edge_index = Graph.cast_edge_index(edge_index)
+        # self._standarize_edge_index()
 
         if num_nodes is None:
             warnings.warn("_maybe_num_node() is used to determine the number of nodes. "
@@ -29,30 +30,21 @@ class Graph(object):
             if self._num_nodes <= max_node_id:
                 raise ValueError("num_nodes=[{}] should be bigger than max node ID in edge_index.".format(self._num_nodes))
 
-        self._node_feat = node_feat
-        self._standarize_node_feat()
+        self._node_feat = Graph.cast_node_feat(node_feat)
+        # self._standarize_node_feat()
 
-        self._node_label = node_label
-        self._standarize_node_label()
-
-    def _standarize_edge_index(self):
-        # convert the edge_index to tensor.
-        if isinstance(self._edge_index, list):
-            self._edge_index = np.array(self._edge_index).astype(np.int32)
-        elif isinstance(self._edge_index, np.ndarray):
-            self._edge_index = self._edge_index.astype(np.int32)
-        elif tf.is_tensor(self._edge_index):
-            self._edge_index = tf.cast(self._edge_index, tf.int32)
+        self._node_label = Graph.cast_node_label(node_label)
+        # self._standarize_node_label()
     
     @classmethod
-    def cast_edge_index(cls, x):
-        if isinstance(x, list):
-            x = np.array(x).astype(np.int32)
-        elif isinstance(x, np.ndarray):
-            x = x.astype(np.int32)
-        elif tf.is_tensor(x):
-            x = tf.cast(x, tf.int32)
-        return x
+    def cast_edge_index(cls, edge_index):
+        if isinstance(edge_index, list):
+            edge_index = np.array(edge_index).astype(np.int32)
+        elif isinstance(edge_index, np.ndarray):
+            edge_index = edge_index.astype(np.int32)
+        elif tf.is_tensor(edge_index):
+            edge_index = tf.cast(edge_index, tf.int32)
+        return edge_index
 
     @classmethod
     def cast_edge_weight(cls, edge_weight):
@@ -63,18 +55,43 @@ class Graph(object):
         elif tf.is_tensor(edge_weight):
             edge_weight = tf.cast(edge_weight, tf.float32)
         return edge_weight
-    
-    def _standarize_node_feat(self):
-        if isinstance(self._node_feat, list):
-            self._node_feat = np.array(self._node_feat).astype(np.float32)
-        elif isinstance(self._node_feat, np.ndarray):
-            self._node_feat = self._node_feat.astype(np.float32)
-        elif tf.is_tensor(self._node_feat):
-            self._node_feat = tf.cast(self._node_feat, tf.float32)
 
-    def _standarize_node_label(self):
-        if isinstance(self._node_label, list):
-            self._node_label = np.array(self._node_label)
+    @classmethod
+    def cast_node_feat(self, node_feat):
+        if isinstance(node_feat, list):
+            node_feat = np.array(node_feat)
+        if isinstance(node_feat, np.ndarray) and node_feat.dtype == np.float64:
+            node_feat = node_feat.astype(np.float32)
+        elif tf.is_tensor(node_feat) and node_feat.dtype == tf.float64:
+            node_feat = tf.cast(node_feat, tf.float32)
+        return node_feat
+
+    @classmethod
+    def cast_node_label(self, node_label):
+        if isinstance(node_label, list):
+            node_label = np.array(node_label)
+        return node_label
+
+    # def _standarize_edge_index(self):
+    #     # convert the edge_index to tensor.
+    #     if isinstance(self._edge_index, list):
+    #         self._edge_index = np.array(self._edge_index).astype(np.int32)
+    #     elif isinstance(self._edge_index, np.ndarray):
+    #         self._edge_index = self._edge_index.astype(np.int32)
+    #     elif tf.is_tensor(self._edge_index):
+    #         self._edge_index = tf.cast(self._edge_index, tf.int32)
+
+    # def _standarize_node_feat(self):
+    #     if isinstance(self._node_feat, list):
+    #         self._node_feat = np.array(self._node_feat).astype(np.float32)
+    #     elif isinstance(self._node_feat, np.ndarray):
+    #         self._node_feat = self._node_feat.astype(np.float32)
+    #     elif tf.is_tensor(self._node_feat):
+    #         self._node_feat = tf.cast(self._node_feat, tf.float32)
+
+    # def _standarize_node_label(self):
+    #     if isinstance(self._node_label, list):
+    #         self._node_label = np.array(self._node_label)
 
     def _maybe_num_node(self, edge_index):
         if len(edge_index):
@@ -118,20 +135,17 @@ class Graph(object):
     #     # convert the graph to an directed graph.
     #     pass
 
-    # def indegree(self):
-    #     # get the indegrees of all nodes in the graph.
-    #     pass
+    @property
+    def indegree(self):
+        return tf.math.unsorted_segment_sum(tf.ones(self.edge_index.shape[1]), 
+                                            self.edge_index[1], 
+                                            self.num_nodes)
 
-    # def outdegree(self):
-    #     # get the outdegree of all the node in the graph.
-    #     pass
-
-    # def to(self, device):
-    #     self._edge_index.to(device)
-
-    # def device(self):
-    #     # get which the device of the graph stored.
-    #     pass
+    @property
+    def outdegree(self):
+        return tf.math.unsorted_segment_sum(tf.ones(self.edge_index.shape[1]), 
+                                            self.edge_index[0], 
+                                            self.num_nodes)
 
     def __repr__(self):
         description = "GNN Graph instance.\n"

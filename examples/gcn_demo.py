@@ -6,21 +6,21 @@
 @Author  :   hanhui
 """
 
-import os
+
+# import os
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-import sys
+# import sys
+# sys.path.append(r'path2gnn_demo') # adds path2gnn_demo to execute in command line.
 import time
 import numpy as np
 import tensorflow as tf
 import tensorlayer as tl
-
-# Following code adds path2gnn_demo to execute in command line.
-# sys.path.append(r'path2gnn_demo') 
 from gnn_demo.datasets import Cora
-from gnn_demo.layers.conv import GCNConv
+from gnn_demo.models.gcn import GCNModel
+from gnn_demo.utils.config import Config
 
 
-# super parameters
+# parameters setting
 n_epoch = 500           # 200
 learning_rate = 0.01    # 0.01
 hidden_dim = 16         # 16
@@ -29,13 +29,12 @@ l2_norm = 3e-4          # 5e-4
 renorm = True           # True
 improved = False        # False
 
-# configuration
 cora_path = r'../gnn_demo/datasets/raw_file/cora/'
 best_model_path = r'./best_models/'
-physical_gpus = tf.config.experimental.list_physical_devices('GPU')
-if len(physical_gpus) > 0:
-    # dynamic allocate gpu memory
-    tf.config.experimental.set_memory_growth(physical_gpus[0], True)
+# physical_gpus = tf.config.experimental.list_physical_devices('GPU')
+# if len(physical_gpus) > 0:
+#     # dynamic allocate gpu memory
+#     tf.config.experimental.set_memory_growth(physical_gpus[0], True)
 
 
 # load cora dataset
@@ -43,29 +42,21 @@ dataset = Cora(cora_path)
 graph, idx_train, idx_val, idx_test = dataset.process()
 
 
-# build GCN
-class GCNModel(tl.layers.Module):
-    def __init__(self, name=None):
-        super().__init__(name=name)
+# configurate and build model
+cfg = Config(feature_dim=dataset.feature_dim,
+             hidden_dim=hidden_dim,
+             num_class=dataset.num_class,
+             renormv=renorm,
+             improved=improved,
+             keep_rate=keep_rate,)
 
-        self.conv1 = GCNConv(dataset.feature_dim, hidden_dim, renorm=renorm, improved=improved)
-        self.conv2 = GCNConv(hidden_dim, dataset.num_class, renorm=renorm, improved=improved)
-        self.relu = tl.ReLU()
-        self.dropout = tl.Dropout(keep=keep_rate)
-
-    def forward(self, x, edge_index):
-        x = self.conv1(x, edge_index)
-        x = self.relu(x)
-        x = self.dropout(x)
-        x = self.conv2(x, edge_index)
-        return x
-
-model = GCNModel(name="GCN")
+model = GCNModel(cfg, name="GCN")
 train_weights = model.trainable_weights
 optimizer = tl.optimizers.Adam(learning_rate)
 best_val_acc = 0.
 
 
+# fit the training set
 print('training starts')
 x, edge_index = graph.node_feat, graph.edge_index
 start_time = time.time()
@@ -94,6 +85,8 @@ for epoch in range(n_epoch):
     val_loss = tl.cost.softmax_cross_entropy_with_logits(val_logits, val_labels)
     val_acc = np.mean(np.equal(np.argmax(val_logits, 1), val_labels))
     log_info += ",  eval loss: {:.4f}, eval acc: {:.4f}".format(val_loss, val_acc)
+
+    # save best model on evaluation set
     if val_acc > best_val_acc:
             best_val_acc = val_acc
             model.save_weights(best_model_path+model.name+".npz")
@@ -111,7 +104,7 @@ for epoch in range(n_epoch):
 end_time = time.time()
 print("training ends in {t}s".format(t=int(end_time-start_time)))
 
-# test
+# test performance
 model.load_weights(best_model_path+model.name+".npz")
 model.set_eval()
 logits = model(x, edge_index)
