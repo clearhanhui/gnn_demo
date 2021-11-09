@@ -31,6 +31,9 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
 ]
+autodoc_mock_imports = [
+    "tensorlayer",
+]
 autosummary_generate = True
 templates_path = ['_templates']
 exclude_patterns = []

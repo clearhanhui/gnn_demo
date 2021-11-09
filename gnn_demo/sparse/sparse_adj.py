@@ -26,7 +26,7 @@ class SparseAdj(object):
         edge_index_is_tensor = tf.is_tensor(edge_index)
 
         if edge_weight is not None:
-            self.edge_weight = Graph.cast_edge_weight(edge_weight)
+            self.edge_weight = Graph.cast_edge_feat(edge_weight)
         else:
             if edge_index_is_tensor:
                 num_edges = tf.shape(self.edge_index)[1]

@@ -3,6 +3,16 @@ import tensorlayer as tl
 from gnn_demo.layers.conv import GCNConv
 
 class GCNModel(tl.layers.Module):
+    r"""
+    Graph Convolutional Network proposed in `Semi-Supervised Classification with Graph Convolutional Networks`_.
+
+    .. _Semi-Supervised Classification with Graph Convolutional Networks:
+        https://arxiv.org/pdf/1609.02907.pdf
+    
+    Parameters:
+        cfg: configuration of GCN
+    """
+
     def __init__(self, cfg, name=None):
         super().__init__(name=name)
 

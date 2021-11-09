@@ -15,7 +15,7 @@ import tensorflow as tf
 import tensorlayer as tl
 
 # Following code adds path2gnn_demo to execute in command line.
-# sys.path.append(r'path2gnn_demo') 
+# sys.path.insert(0, os.path.abspath('../'))
 from gnn_demo.datasets import Cora
 from gnn_demo.layers.conv import GCNConv
 

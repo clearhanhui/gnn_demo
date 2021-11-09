@@ -7,10 +7,10 @@
 """
 
 
-# import os
+import os
+import sys
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-# import sys
-# sys.path.append(r'path2gnn_demo') # adds path2gnn_demo to execute in command line.
+sys.path.insert(0, os.path.abspath('../')) # adds path2gnn_demo to execute in command line.
 import time
 import numpy as np
 import tensorflow as tf

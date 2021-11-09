@@ -54,12 +54,29 @@ def load_data(path):
     return edges, features, labels, idx_train, idx_val, idx_test
 
 class Cora:
+    r"""
+    A citation network of scientific publications with binary word features.
+
+    Statistics:
+        - #Node: 2,708
+        - #Edge: 5,429
+        - #Class: 7
+
+    Parameters:
+        path (str): path to store the dataset
+    """
     def __init__(self, path):
         self.path = path
         self.num_class = None
         self.feature_dim = None
 
     def process(self):
+        r"""
+        Load and preprocess from the raw file of CoRA dataset.
+
+        Returns:
+            tuple(graph, idx_train, idx_val, idx_test)
+        """
         edges, features, labels, idx_train, idx_val, idx_test = load_data(self.path)
         self.num_class = len(set(labels.numpy()))
         self.feature_dim = features.shape[1]
