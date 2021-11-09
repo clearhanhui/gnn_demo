@@ -1,0 +1,17 @@
+gnn_demo.data
+=============
+
+.. currentmodule:: gnn_demo.data
+.. autosummary::
+   :nosignatures:
+   {% for cls in gnn_demo.data.classes %}
+     {{ cls }}
+   {% endfor %}
+
+.. automodule:: gnn_demo.data
+    :members:
+    :exclude-members: Graph
+
+    .. autoclass:: Graph
+       :special-members: __cat_dim__, __inc__
+       :inherited-members:
