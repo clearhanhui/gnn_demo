@@ -4,7 +4,7 @@ import os
 import warnings
 import copy
 import numpy as np
-# import tensorflow as tf
+import tensorflow as tf
 import tensorlayer as tl
 
 class BaseGraph:
@@ -46,6 +46,8 @@ class Graph(object):
     """
 
     def __init__(self, edge_index, edge_feat=None, num_nodes=None, node_feat=None, node_label=None, graph_label=None):
+        if edge_index is None:
+            raise ValueError("edge_index should not be None")
         self._edge_index = Graph.cast_edge_index(edge_index)
 
         if num_nodes is None:
@@ -54,7 +56,7 @@ class Graph(object):
             self._num_nodes = self._maybe_num_node(self._edge_index)
         else:
             self._num_nodes = num_nodes
-            max_node_id = self._maybe_num_node(self._edge_index)
+            max_node_id = self._maybe_num_node(self._edge_index) - 1 # max_node_id = num_nodes - 1
             if self._num_nodes <= max_node_id:
                 raise ValueError("num_nodes=[{}] should be bigger than max node ID in edge_index.".format(self._num_nodes))
         self._edge_feat = Graph.cast_edge_feat(edge_feat)
@@ -69,14 +71,16 @@ class Graph(object):
 
     @classmethod
     def cast_edge_feat(cls, edge_feat):
-        edge_feat = tl.convert_to_tensor(edge_feat)
-        edge_feat = tl.cast(edge_feat, tl.float32)
+        if edge_feat is not None:
+            edge_feat = tl.convert_to_tensor(edge_feat)
+            edge_feat = tl.cast(edge_feat, tl.float32)
         return edge_feat
 
     @classmethod
     def cast_node_feat(cls, node_feat):
-        node_feat = tl.convert_to_tensor(node_feat)
-        node_feat = tl.cast(node_feat, tl.float32)
+        if node_feat is not None:
+            node_feat = tl.convert_to_tensor(node_feat)
+            node_feat = tl.cast(node_feat, tl.float32)
         return node_feat
 
     @classmethod
@@ -94,7 +98,7 @@ class Graph(object):
             edge_index: edge list contains source nodes and destination nodes of graph.
         """
         if len(edge_index):
-            return edge_index[:, :2].max().item() + 1
+            return tl.convert_to_numpy(tl.reduce_max(edge_index)).item() + 1
         else:
             return 0
 
@@ -145,7 +149,7 @@ class Graph(object):
         r"""
         Graph property, return the node in-degree of the graph.
         """
-        return tf.math.unsorted_segment_sum(tf.ones(self.edge_index.shape[1]), 
+        return tf.math.unsorted_segment_sum(tf.ones(self.edge_index.shape[1]),
                                             self.edge_index[1], 
                                             self.num_nodes)
 
@@ -188,6 +192,8 @@ class Graph(object):
         self_loop_index = Graph.cast_edge_index([np.arange(self.num_nodes), np.arange(self.num_nodes)])
         self._edge_index = tf.concat([self._edge_index, self_loop_index], axis=1)
 
+    def generate_onehot_node_feat(self):
+        self._node_feat = tl.convert_to_tensor(np.eye(self.num_nodes, dtype=np.float32))
    
     def __repr__(self):
         description = "GNN {} instance.\n".format(self.__class__.__name__)

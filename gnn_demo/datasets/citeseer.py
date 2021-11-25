@@ -49,7 +49,7 @@ def load_data(path):
                         shape=(labels.shape[0], labels.shape[0]),
                         dtype=np.float32)
     adj = (adj + adj.T.multiply(adj.T > adj) - adj.multiply(adj.T > adj)).tocoo()
-    edges = np.array([adj.col, adj.row])
+    edges = np.array([adj.col, adj.row]).astype(np.int32)
 
 
     idx_train = tl.convert_to_tensor(np.arange(120), dtype=tl.int32)
