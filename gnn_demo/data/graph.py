@@ -3,8 +3,9 @@
 import os
 import warnings
 import copy
-import tensorflow as tf
 import numpy as np
+# import tensorflow as tf
+import tensorlayer as tl
 
 class BaseGraph:
     r"""
@@ -23,7 +24,7 @@ class Graph(object):
 
     .. code-block:: python
 
-        >>> import graph
+        >>> from gnn_demo.data import Graph
         >>> import numpy
         >>> import tensorflow as tf
         >>> g = graph.Graph(edge_index=[[0, 0, 0], [1, 2, 3]], num_nodes=5, node_feat=numpy.random.randn(5, 16))
@@ -62,60 +63,27 @@ class Graph(object):
     
     @classmethod
     def cast_edge_index(cls, edge_index):
-        if isinstance(edge_index, list):
-            edge_index = np.array(edge_index).astype(np.int32)
-        elif isinstance(edge_index, np.ndarray):
-            edge_index = edge_index.astype(np.int32)
-        elif tf.is_tensor(edge_index):
-            edge_index = tf.cast(edge_index, tf.int32)
+        edge_index = tl.convert_to_tensor(edge_index)
+        edge_index = tl.cast(edge_index, tl.int32)
         return edge_index
 
     @classmethod
     def cast_edge_feat(cls, edge_feat):
-        if isinstance(edge_feat, list):
-            edge_feat = np.array(edge_feat).astype(np.float32)
-        elif isinstance(edge_feat, np.ndarray):
-            edge_feat = edge_feat.astype(np.float32)
-        elif tf.is_tensor(edge_feat):
-            edge_feat = tf.cast(edge_feat, tf.float32)
+        edge_feat = tl.convert_to_tensor(edge_feat)
+        edge_feat = tl.cast(edge_feat, tl.float32)
         return edge_feat
 
     @classmethod
-    def cast_node_feat(self, node_feat):
-        if isinstance(node_feat, list):
-            node_feat = np.array(node_feat)
-        if isinstance(node_feat, np.ndarray) and node_feat.dtype == np.float64:
-            node_feat = node_feat.astype(np.float32)
-        elif tf.is_tensor(node_feat) and node_feat.dtype == tf.float64:
-            node_feat = tf.cast(node_feat, tf.float32)
+    def cast_node_feat(cls, node_feat):
+        node_feat = tl.convert_to_tensor(node_feat)
+        node_feat = tl.cast(node_feat, tl.float32)
         return node_feat
 
     @classmethod
-    def cast_node_label(self, node_label):
+    def cast_node_label(cls, node_label):
         if isinstance(node_label, list):
             node_label = np.array(node_label)
         return node_label
-
-    # def _standarize_edge_index(self):
-    #     # convert the edge_index to tensor.
-    #     if isinstance(self._edge_index, list):
-    #         self._edge_index = np.array(self._edge_index).astype(np.int32)
-    #     elif isinstance(self._edge_index, np.ndarray):
-    #         self._edge_index = self._edge_index.astype(np.int32)
-    #     elif tf.is_tensor(self._edge_index):
-    #         self._edge_index = tf.cast(self._edge_index, tf.int32)
-
-    # def _standarize_node_feat(self):
-    #     if isinstance(self._node_feat, list):
-    #         self._node_feat = np.array(self._node_feat).astype(np.float32)
-    #     elif isinstance(self._node_feat, np.ndarray):
-    #         self._node_feat = self._node_feat.astype(np.float32)
-    #     elif tf.is_tensor(self._node_feat):
-    #         self._node_feat = tf.cast(self._node_feat, tf.float32)
-
-    # def _standarize_node_label(self):
-    #     if isinstance(self._node_label, list):
-    #         self._node_label = np.array(self._node_label)
 
     # @classmethod
     def _maybe_num_node(self, edge_index):
@@ -190,6 +158,16 @@ class Graph(object):
                                             self.edge_index[0], 
                                             self.num_nodes)
 
+    def add_self_loop(self, n_loops=1):
+        """
+        Args:
+            n_loops: number of self loops.
+
+        """
+        self_loop_index = tf.stack([tf.range(self.num_nodes), tf.range(self.num_nodes)])
+        self._edge_index = tf.concat([self._edge_index, self_loop_index], axis=1)
+
+
     # def node_mask(self):
     #     # return a subgraph based on index. (?)
     #     pass
@@ -205,6 +183,10 @@ class Graph(object):
     # def to_directed(self):
     #     # convert the graph to an directed graph.
     #     pass
+
+    def add_self_loop(self):
+        self_loop_index = Graph.cast_edge_index([np.arange(self.num_nodes), np.arange(self.num_nodes)])
+        self._edge_index = tf.concat([self._edge_index, self_loop_index], axis=1)
 
    
     def __repr__(self):
@@ -234,50 +216,52 @@ class Graph(object):
 
         Args:
             path: The directory for the storage of the graph.
-        """
-        if self._is_tensor:
-            # Convert back into numpy and dump.
-            graph = self.numpy(inplace=False)
-            graph.dump(path)
-        else:
-            if not os.path.exists(path):
-                os.makedirs(path)
+        """        
+        pass
 
-            np.save(os.path.join(path, 'num_nodes.npy'), self._num_nodes)
-            np.save(os.path.join(path, 'edges.npy'), self._edges)
-            np.save(os.path.join(path, 'num_graph.npy'), self._num_graph)
+        # if self._is_tensor:
+        #     # Convert back into numpy and dump.
+        #     graph = self.numpy(inplace=False)
+        #     graph.dump(path)
+        # else:
+        #     if not os.path.exists(path):
+        #         os.makedirs(path)
 
-            if self._adj_src_index is not None:
-                self._adj_src_index.dump(os.path.join(path, 'adj_src'))
+        #     np.save(os.path.join(path, 'num_nodes.npy'), self._num_nodes)
+        #     np.save(os.path.join(path, 'edges.npy'), self._edges)
+        #     np.save(os.path.join(path, 'num_graph.npy'), self._num_graph)
 
-            if self._adj_dst_index is not None:
-                self._adj_dst_index.dump(os.path.join(path, 'adj_dst'))
+        #     if self._adj_src_index is not None:
+        #         self._adj_src_index.dump(os.path.join(path, 'adj_src'))
 
-            if self._graph_node_index is not None:
-                np.save(
-                    os.path.join(path, 'graph_node_index.npy'),
-                    self._graph_node_index)
+        #     if self._adj_dst_index is not None:
+        #         self._adj_dst_index.dump(os.path.join(path, 'adj_dst'))
 
-            if self._graph_edge_index is not None:
-                np.save(
-                    os.path.join(path, 'graph_edge_index.npy'),
-                    self._graph_edge_index)
+        #     if self._graph_node_index is not None:
+        #         np.save(
+        #             os.path.join(path, 'graph_node_index.npy'),
+        #             self._graph_node_index)
 
-            def _dump_feat(feat_path, feat):
-                """Dump all features to .npy file.
-                """
-                if len(feat) == 0:
-                    return
+        #     if self._graph_edge_index is not None:
+        #         np.save(
+        #             os.path.join(path, 'graph_edge_index.npy'),
+        #             self._graph_edge_index)
 
-                if not os.path.exists(feat_path):
-                    os.makedirs(feat_path)
+        #     def _dump_feat(feat_path, feat):
+        #         """Dump all features to .npy file.
+        #         """
+        #         if len(feat) == 0:
+        #             return
 
-                for key in feat:
-                    value = feat[key]
-                    np.save(os.path.join(feat_path, key + ".npy"), value)
+        #         if not os.path.exists(feat_path):
+        #             os.makedirs(feat_path)
 
-            _dump_feat(os.path.join(path, "node_feat"), self.node_feat)
-            _dump_feat(os.path.join(path, "edge_feat"), self.edge_feat)
+        #         for key in feat:
+        #             value = feat[key]
+        #             np.save(os.path.join(feat_path, key + ".npy"), value)
+
+        #     _dump_feat(os.path.join(path, "node_feat"), self.node_feat)
+        #     _dump_feat(os.path.join(path, "edge_feat"), self.edge_feat)
 
     @classmethod
     def load(cls, path, mmap_mode="r"):
@@ -289,60 +273,61 @@ class Graph(object):
 
             mmap_mode: Default :code:`mmap_mode="r"`. If not None, memory-map the graph.  
         """
+        pass
 
-        num_nodes = np.load(
-            os.path.join(path, 'num_nodes.npy'), mmap_mode=mmap_mode)
-        edges = np.load(os.path.join(path, 'edges.npy'), mmap_mode=mmap_mode)
-        num_graph = np.load(
-            os.path.join(path, 'num_graph.npy'), mmap_mode=mmap_mode)
-        if os.path.exists(os.path.join(path, 'graph_node_index.npy')):
-            graph_node_index = np.load(
-                os.path.join(path, 'graph_node_index.npy'),
-                mmap_mode=mmap_mode)
-        else:
-            graph_node_index = None
+        # num_nodes = np.load(
+        #     os.path.join(path, 'num_nodes.npy'), mmap_mode=mmap_mode)
+        # edges = np.load(os.path.join(path, 'edges.npy'), mmap_mode=mmap_mode)
+        # num_graph = np.load(
+        #     os.path.join(path, 'num_graph.npy'), mmap_mode=mmap_mode)
+        # if os.path.exists(os.path.join(path, 'graph_node_index.npy')):
+        #     graph_node_index = np.load(
+        #         os.path.join(path, 'graph_node_index.npy'),
+        #         mmap_mode=mmap_mode)
+        # else:
+        #     graph_node_index = None
 
-        if os.path.exists(os.path.join(path, 'graph_edge_index.npy')):
-            graph_edge_index = np.load(
-                os.path.join(path, 'graph_edge_index.npy'),
-                mmap_mode=mmap_mode)
-        else:
-            graph_edge_index = None
+        # if os.path.exists(os.path.join(path, 'graph_edge_index.npy')):
+        #     graph_edge_index = np.load(
+        #         os.path.join(path, 'graph_edge_index.npy'),
+        #         mmap_mode=mmap_mode)
+        # else:
+        #     graph_edge_index = None
 
-        if os.path.isdir(os.path.join(path, 'adj_src')):
-            adj_src_index = EdgeIndex.load(
-                os.path.join(path, 'adj_src'), mmap_mode=mmap_mode)
-        else:
-            adj_src_index = None
+        # if os.path.isdir(os.path.join(path, 'adj_src')):
+        #     adj_src_index = EdgeIndex.load(
+        #         os.path.join(path, 'adj_src'), mmap_mode=mmap_mode)
+        # else:
+        #     adj_src_index = None
 
-        if os.path.isdir(os.path.join(path, 'adj_dst')):
-            adj_dst_index = EdgeIndex.load(
-                os.path.join(path, 'adj_dst'), mmap_mode=mmap_mode)
-        else:
-            adj_dst_index = None
+        # if os.path.isdir(os.path.join(path, 'adj_dst')):
+        #     adj_dst_index = EdgeIndex.load(
+        #         os.path.join(path, 'adj_dst'), mmap_mode=mmap_mode)
+        # else:
+        #     adj_dst_index = None
 
-        def _load_feat(feat_path):
-            """Load features from .npy file.
-            """
-            feat = {}
-            if os.path.isdir(feat_path):
-                for feat_name in os.listdir(feat_path):
-                    feat[os.path.splitext(feat_name)[0]] = np.load(
-                        os.path.join(feat_path, feat_name),
-                        mmap_mode=mmap_mode)
-            return feat
+        # def _load_feat(feat_path):
+        #     """Load features from .npy file.
+        #     """
+        #     feat = {}
+        #     if os.path.isdir(feat_path):
+        #         for feat_name in os.listdir(feat_path):
+        #             feat[os.path.splitext(feat_name)[0]] = np.load(
+        #                 os.path.join(feat_path, feat_name),
+        #                 mmap_mode=mmap_mode)
+        #     return feat
 
-        node_feat = _load_feat(os.path.join(path, 'node_feat'))
-        edge_feat = _load_feat(os.path.join(path, 'edge_feat'))
-        return cls(edges=edges,
-                   num_nodes=num_nodes,
-                   node_feat=node_feat,
-                   edge_feat=edge_feat,
-                   adj_src_index=adj_src_index,
-                   adj_dst_index=adj_dst_index,
-                   _num_graph=num_graph,
-                   _graph_node_index=graph_node_index,
-                   _graph_edge_index=graph_edge_index)
+        # node_feat = _load_feat(os.path.join(path, 'node_feat'))
+        # edge_feat = _load_feat(os.path.join(path, 'edge_feat'))
+        # return cls(edges=edges,
+        #            num_nodes=num_nodes,
+        #            node_feat=node_feat,
+        #            edge_feat=edge_feat,
+        #            adj_src_index=adj_src_index,
+        #            adj_dst_index=adj_dst_index,
+        #            _num_graph=num_graph,
+        #            _graph_node_index=graph_node_index,
+        #            _graph_edge_index=graph_edge_index)
 
 
 class BatchGraph(Graph):

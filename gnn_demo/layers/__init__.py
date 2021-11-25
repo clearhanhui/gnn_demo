@@ -1,1 +1,1 @@
-from .conv import MessagePassing, GCNConv
+from .conv import MessagePassing, GCNConv, GATConv

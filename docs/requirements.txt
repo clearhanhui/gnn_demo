@@ -3,4 +3,3 @@ tensorflow
 scipy
 sphinx
 sphinx_rtd_theme
-

@@ -6,24 +6,17 @@ from gnn_demo.sparse.sparse_adj import SparseAdj
 from gnn_demo.sparse.sparse_ops import sparse_diag_matmul, diag_sparse_matmul
 
 
-def gcn_norm(sparse_adj, renorm=True, improved=False):
+def gcn_norm(sparse_adj):
     """
     Compute normed edge (updated edge_index and normalized edge_weight) for GCN normalization.
 
     Parameters:
         sparse_adj: SparseAdj, sparse adjacency matrix.
-        renorm: Whether use renormalization trick (https://arxiv.org/pdf/1609.02907.pdf).
-        improved: Whether use improved GCN or not.
         cache: A dict for caching the updated edge_index and normalized edge_weight.
     
     Returns:
         Normed edge (updated edge_index and normalized edge_weight).
     """
-
-    fill_weight = 2.0 if improved else 1.0
-
-    if renorm:
-        sparse_adj = sparse_adj.add_self_loop(fill_weight=fill_weight)
 
     deg = sparse_adj.reduce_sum(axis=-1)
     deg_inv_sqrt = tf.pow(deg, -0.5)
@@ -35,10 +28,6 @@ def gcn_norm(sparse_adj, renorm=True, improved=False):
 
     # (D^(-1/2)A)D^(-1/2)
     normed_sparse_adj = sparse_diag_matmul(diag_sparse_matmul(deg_inv_sqrt, sparse_adj), deg_inv_sqrt)
-
-    if not renorm:
-        normed_sparse_adj = normed_sparse_adj.add_self_loop(fill_weight=fill_weight)
-
 
     return normed_sparse_adj
 
@@ -104,25 +93,25 @@ class GCNConv(MessagePassing):
         self.add_self_loops = add_self_loops
         self.renorm = renorm
 
-        stdv = 1. / math.sqrt(self.out_channels)
+        stdv = 1. / math.sqrt(self.out_channels) # follow the way of pygcn
         W_i = tl.initializers.random_uniform(minval=-stdv, maxval=stdv)
-        self.tl_linear = tl.layers.Dense(n_units=self.out_channels,
-                                        in_channels=self.in_channels,
-                                        W_init=W_i, b_init=None)
-        if add_bias:
-            b_i = tl.initializers.Zeros()
-            self.bias = b_i(shape=(1,self.out_channels), dtype=tl.float32)
+        self.linear = tl.layers.Dense(n_units=self.out_channels,
+                                      in_channels=self.in_channels,
+                                      W_init=W_i, b_init=None)
+        if add_bias is True:
+            initor = tl.initializers.Zeros()
+            self.bias = self._get_weights("bias", shape=(1,self.out_channels), init=initor)
 
-    def message_aggregate(self, sparse_adj, x):
+    def message_aggregate(self, x, sparse_adj):
         return sparse_adj @ x
 
     def forward(self, x, edge_index, edge_weight=None):
         num_nodes = tf.shape(x)[0]
         sparse_adj = SparseAdj(edge_index, edge_weight, [num_nodes, num_nodes])
-        sparse_adj = gcn_norm(sparse_adj, self.renorm, self.improved)
+        sparse_adj = gcn_norm(sparse_adj)
 
-        x = self.tl_linear(x)
-        out = self.propagate(sparse_adj, x)
+        x = self.linear(x)
+        out = self.propagate(x, sparse_adj)
         if self.bias is not None:
             out += self.bias
         

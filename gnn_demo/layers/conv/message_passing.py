@@ -32,13 +32,15 @@ class MessagePassing(tl.layers.Module):
     def aggregate(self, inputs, index):
         return tf.math.segment_sum(inputs, index)
 
-    def message_aggregate(self):
-        raise NotImplementedError
+    def message_aggregate(self, x, index):
+        x = self.message(x)
+        x = self.aggregate(x, index)
+        return x
     
     def update(self, x):
         return x
 
-    def propagate(self, edge_index, x):
-        out = self.message_aggregate(edge_index, x)
+    def propagate(self, x, edge_index):
+        out = self.message_aggregate(x, edge_index)
         out = self.update(out)
         return out

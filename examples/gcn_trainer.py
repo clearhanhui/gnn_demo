@@ -1,7 +1,7 @@
 # !/usr/bin/env python
 # -*- encoding: utf-8 -*-
 """
-@File    :   gcn.py
+@File    :   gcn_trainer.py
 @Time    :   2021/11/02 22:05:55
 @Author  :   hanhui
 """
@@ -10,7 +10,7 @@
 import os
 import sys
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-sys.path.insert(0, os.path.abspath('../')) # adds path2gnn_demo to execute in command line.
+# sys.path.insert(0, os.path.abspath('../')) # adds path2gnn_demo to execute in command line.
 import time
 import numpy as np
 import tensorflow as tf
